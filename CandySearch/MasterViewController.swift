@@ -37,6 +37,9 @@ class MasterViewController: UIViewController, UITableViewDataSource, UITableView
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        searchController.searchBar.scopeButtonTitles = ["All", "Chocolate", "Hard", "Other"]
+        searchController.searchBar.delegate = self
+        
         candies = [
             Candy(category:"Chocolate", name:"Chocolate Bar"),
             Candy(category:"Chocolate", name:"Chocolate Chip"),
@@ -133,20 +136,36 @@ class MasterViewController: UIViewController, UITableViewDataSource, UITableView
     
     func filterContentForSearchText(_ searchText: String, scope: String = "All") {
         filteredCandies = candies.filter({(candy: Candy) -> Bool in
-            return candy.name.lowercased().contains(searchText.lowercased())
+            let doesCategoryMatch = (scope == "All") || (candy.category == scope)
+            
+            if searchbarIsEmpty() {
+                return doesCategoryMatch
+            } else {
+                return doesCategoryMatch && candy.name.lowercased().contains(searchText.lowercased())
+            }
         })
         
         tableView.reloadData()
     }
     
     func isFiltering() -> Bool {
-        return searchController.isActive && !searchbarIsEmpty()
+        let searchBarScopeIsFiltering = searchController.searchBar.selectedScopeButtonIndex != 0
+        return searchController.isActive && (!searchbarIsEmpty() || searchBarScopeIsFiltering)
     }
 }
 
 extension MasterViewController: UISearchResultsUpdating {
     // MARK: - UISearchResultsUpdating delegate
     func updateSearchResults(for searchController: UISearchController) {
-        filterContentForSearchText(searchController.searchBar.text!)
+        let searchBar = searchController.searchBar
+        let scope = searchBar.scopeButtonTitles![searchBar.selectedScopeButtonIndex]
+        filterContentForSearchText(searchBar.text!, scope: scope)
+    }
+}
+
+extension MasterViewController: UISearchBarDelegate {
+    // MARK: - UISearchbar Deleagte
+    func searchBar(_ searchBar: UISearchBar, selectedScopeButtonIndexDidChange selectedScope: Int) { // ScopeBar 생성.
+        filterContentForSearchText(searchBar.text!, scope: searchBar.scopeButtonTitles![selectedScope]) // 다른 scope로 전환할 때 호출되어 짐. 이에 필터링을 새로 하고 filterContentForSearchText를 바꿔야함.
     }
 }
