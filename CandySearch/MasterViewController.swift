@@ -30,10 +30,13 @@ class MasterViewController: UIViewController, UITableViewDataSource, UITableView
     
     var detailViewController: DetailViewController? = nil
     var candies = [Candy]()
+    var filteredCandies = [Candy]()
+    let searchController = UISearchController(searchResultsController: nil) // searchResultsController가 nil이면 동일한 super view 를 사용하여 결과를 표시하도록 지시한다. 있다면 결과를 표시하기 위해 다른 뷰를 씀.
     
     // MARK: - View Setup
     override func viewDidLoad() {
         super.viewDidLoad()
+        
         candies = [
             Candy(category:"Chocolate", name:"Chocolate Bar"),
             Candy(category:"Chocolate", name:"Chocolate Chip"),
@@ -51,6 +54,12 @@ class MasterViewController: UIViewController, UITableViewDataSource, UITableView
             Candy(category:"Other", name:"Liquorice"),
             Candy(category:"Hard", name:"Toffee Apple")
         ]
+        
+        searchController.searchResultsUpdater = self // delegate와 같은건가?
+        searchController.obscuresBackgroundDuringPresentation = false // searchController의 기본 값은 현재 뷰를 흐리게(obscure)하는 데 그걸 막음.
+        searchController.searchBar.placeholder = "Search Candies"
+        navigationItem.searchController = searchController // iOS 11 의 새로운 기능으로, UINavicationController의 NavigationItem으로 searchBar를 추가한다.
+        definesPresentationContext = true // UISearchController가 활성화되어있는 동안 사용자가 다른 뷰 컨트롤러로 이동하면 searchBar가 화면에 남아있지 않도록 함.
         
         if let splitViewController = splitViewController {
             let controllers = splitViewController.viewControllers
@@ -77,13 +86,23 @@ class MasterViewController: UIViewController, UITableViewDataSource, UITableView
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        if isFiltering() {
+            return filteredCandies.count
+        }
+        
         return candies.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
         
-        let candy = candies[indexPath.row]
+        let candy: Candy // 초기화를 한 번만 할 꺼라면, let으로 줘도 됨.
+        if isFiltering() {
+            candy = filteredCandies[indexPath.row]
+        } else {
+            candy = candies[indexPath.row]
+        }
+//        let candy = candies[indexPath.row]
         cell.textLabel!.text = candy.name
         cell.detailTextLabel!.text = candy.category
         return cell
@@ -93,12 +112,41 @@ class MasterViewController: UIViewController, UITableViewDataSource, UITableView
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "showDetail" {
             if let indexPath = tableView.indexPathForSelectedRow {
-                let candy = candies[indexPath.row]
+                let candy: Candy
+                if isFiltering() {
+                    candy = filteredCandies[indexPath.row]
+                } else {
+                    candy = candies[indexPath.row]
+                }
                 let controller = (segue.destination as! UINavigationController).topViewController as! DetailViewController
                 controller.detailCandy = candy
                 controller.navigationItem.leftBarButtonItem = splitViewController?.displayModeButtonItem
                 controller.navigationItem.leftItemsSupplementBackButton = true
             }
         }
+    }
+    
+    // MARK: - Private instance methods
+    func searchbarIsEmpty() -> Bool {
+        return searchController.searchBar.text?.isEmpty ?? true
+    }
+    
+    func filterContentForSearchText(_ searchText: String, scope: String = "All") {
+        filteredCandies = candies.filter({(candy: Candy) -> Bool in
+            return candy.name.lowercased().contains(searchText.lowercased())
+        })
+        
+        tableView.reloadData()
+    }
+    
+    func isFiltering() -> Bool {
+        return searchController.isActive && !searchbarIsEmpty()
+    }
+}
+
+extension MasterViewController: UISearchResultsUpdating {
+    // MARK: - UISearchResultsUpdating delegate
+    func updateSearchResults(for searchController: UISearchController) {
+        filterContentForSearchText(searchController.searchBar.text!)
     }
 }
