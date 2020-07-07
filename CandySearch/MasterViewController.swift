@@ -39,6 +39,7 @@ class MasterViewController: UIViewController, UITableViewDataSource, UITableView
         
         searchController.searchBar.scopeButtonTitles = ["All", "Chocolate", "Hard", "Other"]
         searchController.searchBar.delegate = self
+        tableView.tableFooterView = searchFooter
         
         candies = [
             Candy(category:"Chocolate", name:"Chocolate Bar"),
@@ -90,9 +91,11 @@ class MasterViewController: UIViewController, UITableViewDataSource, UITableView
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if isFiltering() {
+            searchFooter.setIsFilteringToShow(filteredItemCount: filteredCandies.count, of: candies.count)
             return filteredCandies.count
         }
         
+        searchFooter.setNotFiltering()
         return candies.count
     }
     
